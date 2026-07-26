@@ -4,11 +4,11 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Ejercicios Interactivos", page_icon="🧮", layout="centered")
 
+# ---------------------------------------------------------
+# 1. Configuración de Niveles
+# ---------------------------------------------------------
 st.title("🧮 Ejercicios de Matemática Interactivos")
 
-# ---------------------------------------------------------
-# 1. Selector de Nivel y Configuración
-# ---------------------------------------------------------
 nivel = st.sidebar.radio("Selecciona el Nivel:", ["Fácil (1-10)", "Medio (10-50)", "Difícil (50-100)"])
 
 if nivel == "Fácil (1-10)":
@@ -19,40 +19,55 @@ else:
     rango_min, rango_max = 50, 100
 
 # ---------------------------------------------------------
-# 2. Inicialización del Estado de la Sesión
+# 2. Inicialización de la Sesión y Contadores
 # ---------------------------------------------------------
+if "racha" not in st.session_state:
+    st.session_state.racha = 0
+
+if "total_completados" not in st.session_state:
+    st.session_state.total_completados = 0
+
 if "num1" not in st.session_state or st.session_state.get("nivel_actual") != nivel:
     st.session_state.nivel_actual = nivel
     st.session_state.num1 = random.randint(rango_min, rango_max)
     st.session_state.num2 = random.randint(rango_min, rango_max)
-    st.session_state.racha = 0
-    st.session_state.total_completados = 0
 
 def generar_nuevo_ejercicio():
     st.session_state.num1 = random.randint(rango_min, rango_max)
     st.session_state.num2 = random.randint(rango_min, rango_max)
 
-# Procesar parámetros enviados automáticamente desde JavaScript
-params = st.query_params
-if "resultado" in params:
-    res = params["resultado"]
-    st.query_params.clear() # Limpiar parámetros de la URL
-    if res == "correcto":
+# ---------------------------------------------------------
+# 3. Procesar Respuesta (Procesamiento Prioritario)
+# ---------------------------------------------------------
+if "estado" in st.query_params:
+    resultado = st.query_params["estado"]
+    st.query_params.clear()  # Limpiar la URL para evitar bucles
+    
+    if resultado == "acierto":
         st.session_state.racha += 1
         st.session_state.total_completados += 1
         generar_nuevo_ejercicio()
         st.rerun()
-    elif res == "incorrecto":
-        st.session_state.racha = 0 # Reiniciar racha si falla
+    elif resultado == "fallo":
+        st.session_state.racha = 0
+        st.rerun()
 
 # ---------------------------------------------------------
-# 3. Lógica del Problema y Opciones
+# 4. Mostrar Estadísticas
+# ---------------------------------------------------------
+col1, col2 = st.columns(2)
+col1.metric("Aciertos seguidos (Racha)", st.session_state.racha)
+col2.metric("Ejercicios resueltos", st.session_state.total_completados)
+
+st.markdown("---")
+
+# ---------------------------------------------------------
+# 5. Generación de Problema y Opciones
 # ---------------------------------------------------------
 n1 = st.session_state.num1
 n2 = st.session_state.num2
 respuesta_correcta = n1 + n2
 
-# Generar opciones distractoras únicas
 opciones = [respuesta_correcta]
 while len(opciones) < 3:
     distractor = respuesta_correcta + random.choice([-3, -2, -1, 1, 2, 3, 5, -5])
@@ -61,15 +76,8 @@ while len(opciones) < 3:
 
 random.shuffle(opciones)
 
-# Mostrar estadísticas del alumno
-col1, col2 = st.columns(2)
-col1.metric("Aciertos seguidos (Racha)", st.session_state.racha)
-col2.metric("Ejercicios resueltos", st.session_state.total_completados)
-
-st.markdown("---")
-
 # ---------------------------------------------------------
-# 4. Componente Interactivo (Mouse + Táctil con Auto-Verificación)
+# 6. Componente Interactivo (Móvil + Laptop + Auto-Avanzado)
 # ---------------------------------------------------------
 drag_html = f"""
 <!DOCTYPE html>
@@ -163,7 +171,6 @@ drag_html = f"""
         let isDragging = false;
         let startX, startY;
 
-        // Pointer Events: Funciona en Celulares (Táctil) y Laptops (Ratón/Trackpad)
         ficha.addEventListener('pointerdown', (e) => {{
             if (bloqueado) return;
             isDragging = true;
@@ -203,10 +210,10 @@ drag_html = f"""
                     feedback.textContent = "¡Excelente! 🎉";
                     feedback.style.color = "#2F855A";
                     
-                    // Notificar a Streamlit para pasar automáticamente al siguiente
+                    // Notificar el acierto a la ventana principal de Streamlit
                     setTimeout(() => {{
-                        window.top.location.href = window.top.location.pathname + "?resultado=correcto";
-                    }}, 600);
+                        window.top.location.search = "?estado=acierto";
+                    }}, 500);
                 }} else {{
                     destino.style.backgroundColor = "#FED7D7";
                     destino.style.borderColor = "#E53E3E";
@@ -214,11 +221,8 @@ drag_html = f"""
                     feedback.style.color = "#C53030";
                     
                     setTimeout(() => {{
-                        destino.textContent = "?";
-                        destino.style.backgroundColor = "#EFF6FF";
-                        destino.style.borderColor = "#3B82F6";
-                        feedback.textContent = "";
-                    }}, 1000);
+                        window.top.location.search = "?estado=fallo";
+                    }}, 900);
                 }}
             }}
 
@@ -233,7 +237,7 @@ drag_html = f"""
 components.html(drag_html, height=290)
 
 # ---------------------------------------------------------
-# 5. Botón Secundario de Salteo Opcional
+# 7. Botón Opcional de Salteo
 # ---------------------------------------------------------
 if st.button("🔄 Saltar Ejercicio", use_container_width=True):
     generar_nuevo_ejercicio()
