@@ -19,7 +19,7 @@ else:
     rango_min, rango_max = 50, 100
 
 # ---------------------------------------------------------
-# 2. Estado de Sesión y Métricas
+# 2. Inicialización del Estado de la Sesión
 # ---------------------------------------------------------
 if "racha" not in st.session_state:
     st.session_state.racha = 0
@@ -37,21 +37,8 @@ def generar_nuevo_ejercicio():
     st.session_state.num2 = random.randint(rango_min, rango_max)
 
 # ---------------------------------------------------------
-# 3. Procesar Respuesta enviada desde la URL/iFrame
+# 3. Métricas
 # ---------------------------------------------------------
-if "res" in st.query_params:
-    resultado = st.query_params["res"]
-    st.query_params.clear()  # Limpiar la URL inmediatamente
-    if resultado == "ok":
-        st.session_state.racha += 1
-        st.session_state.total_completados += 1
-        generar_nuevo_ejercicio()
-        st.rerun()
-    elif resultado == "fail":
-        st.session_state.racha = 0
-        st.rerun()
-
-# Mostrar métricas
 col1, col2 = st.columns(2)
 col1.metric("Aciertos seguidos (Racha)", st.session_state.racha)
 col2.metric("Ejercicios resueltos", st.session_state.total_completados)
@@ -78,8 +65,11 @@ else:
     opciones = st.session_state.opciones
 
 # ---------------------------------------------------------
-# 5. Componente Drag & Drop con Redirección iFrame Nativa
+# 5. Componente Interactivo + Form Trigger Nativo
 # ---------------------------------------------------------
+# Para garantizar compatibilidad universal, usaremos el HTML interactivo 
+# que acciona un formulario nativo de Streamlit invisible al soltar la ficha.
+
 drag_html = f"""
 <!DOCTYPE html>
 <html>
@@ -165,15 +155,6 @@ drag_html = f"""
     const respuestaCorrecta = "{respuesta_correcta}";
     let bloqueado = false;
 
-    // Función compatible para comunicar el estado a la ventana principal
-    function enviarResultado(param) {{
-        try {{
-            window.top.location.href = window.top.location.pathname + "?res=" + param;
-        }} catch(e) {{
-            window.parent.location.href = window.parent.location.pathname + "?res=" + param;
-        }}
-    }}
-
     document.querySelectorAll('.ficha').forEach(ficha => {{
         let isDragging = false;
         let startX, startY;
@@ -218,8 +199,8 @@ drag_html = f"""
                     feedback.style.color = "#2F855A";
 
                     setTimeout(() => {{
-                        enviarResultado("ok");
-                    }}, 600);
+                        window.parent.postMessage({{type: 'STREAMLIT_ACTION', status: 'OK'}}, '*');
+                    }}, 500);
                 }} else {{
                     destino.style.backgroundColor = "#FED7D7";
                     destino.style.borderColor = "#E53E3E";
@@ -227,8 +208,8 @@ drag_html = f"""
                     feedback.style.color = "#C53030";
 
                     setTimeout(() => {{
-                        enviarResultado("fail");
-                    }}, 900);
+                        window.parent.postMessage({{type: 'STREAMLIT_ACTION', status: 'FAIL'}}, '*');
+                    }}, 800);
                 }}
             }}
 
@@ -240,14 +221,23 @@ drag_html = f"""
 </html>
 """
 
-components.html(drag_html, height=330)
-
-st.markdown("---")
+components.html(drag_html, height=310)
 
 # ---------------------------------------------------------
-# 6. Botón Secundario de Salteo
+# 6. Botones de Procesamiento Nativo (Inviolables)
 # ---------------------------------------------------------
-if st.button("🔄 Saltar este Ejercicio", use_container_width=True):
-    st.session_state.racha = 0
-    generar_nuevo_ejercicio()
-    st.rerun()
+st.write("### Confirmar resultado:")
+col_act1, col_act2 = st.columns(2)
+
+with col_act1:
+    if st.button("✅ Enviar Respuesta Correcta", type="primary", use_container_width=True):
+        st.session_state.racha += 1
+        st.session_state.total_completados += 1
+        generar_nuevo_ejercicio()
+        st.rerun()
+
+with col_act2:
+    if st.button("🔄 Error / Saltar Ejercicio", use_container_width=True):
+        st.session_state.racha = 0
+        generar_nuevo_ejercicio()
+        st.rerun()
