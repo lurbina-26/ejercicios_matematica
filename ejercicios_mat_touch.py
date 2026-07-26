@@ -65,7 +65,7 @@ else:
     opciones = st.session_state.opciones
 
 # ---------------------------------------------------------
-# 5. Componente Interactivo (Arrastrar + Auto-Validación)
+# 5. Componente Interactivo (Arrastrar + Comunicación Nativa)
 # ---------------------------------------------------------
 drag_html = f"""
 <!DOCTYPE html>
@@ -147,6 +147,15 @@ drag_html = f"""
 <div id="feedback"></div>
 
 <script>
+    // Configuración para comunicar el valor directamente a Streamlit
+    function notifyStreamlit(value) {{
+        window.parent.postMessage({{
+            isStreamlitMessage: true,
+            type: "streamlit:setComponentValue",
+            value: value
+        }}, "*");
+    }}
+
     const destino = document.getElementById('destino');
     const feedback = document.getElementById('feedback');
     const respuestaCorrecta = "{respuesta_correcta}";
@@ -195,19 +204,21 @@ drag_html = f"""
                     feedback.textContent = "¡Excelente! 🎉";
                     feedback.style.color = "#2F855A";
 
-                    // Enviar evento de acierto a Streamlit
                     setTimeout(() => {{
-                        window.parent.postMessage({{ isStreamlitMessage: true, type: "streamlit:setComponentValue", value: "ACIERTO" }}, "*");
-                    }}, 700);
+                        notifyStreamlit("ACIERTO");
+                    }}, 600);
                 }} else {{
                     destino.style.backgroundColor = "#FED7D7";
                     destino.style.borderColor = "#E53E3E";
                     feedback.textContent = "Inténtalo de nuevo ❌";
                     feedback.style.color = "#C53030";
 
-                    // Enviar evento de fallo a Streamlit
                     setTimeout(() => {{
-                        window.parent.postMessage({{ isStreamlitMessage: true, type: "streamlit:setComponentValue", value: "FALLO" }}, "*");
+                        destino.textContent = "?";
+                        destino.style.backgroundColor = "#EFF6FF";
+                        destino.style.borderColor = "#3B82F6";
+                        feedback.textContent = "";
+                        notifyStreamlit("FALLO");
                     }}, 900);
                 }}
             }}
@@ -220,11 +231,11 @@ drag_html = f"""
 </html>
 """
 
-# Renderizar el componente interactivo
+# Renderizar el componente y capturar el valor
 resultado_arrastre = components.html(drag_html, height=330)
 
 # ---------------------------------------------------------
-# 6. Procesar Eventos de Arrastre Automáticamente
+# 6. Procesar Eventos Enviados desde el Componente
 # ---------------------------------------------------------
 if resultado_arrastre == "ACIERTO":
     st.session_state.racha += 1
@@ -232,7 +243,7 @@ if resultado_arrastre == "ACIERTO":
     generar_nuevo_ejercicio()
     st.rerun()
 elif resultado_arrastre == "FALLO":
-    st.session_state.racha = 0  # Reiniciar racha al fallar
+    st.session_state.racha = 0
     st.rerun()
 
 st.markdown("---")
