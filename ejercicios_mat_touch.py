@@ -2,7 +2,6 @@ import random
 import streamlit as st
 import streamlit.components.v1 as components
 
-# Configuración inicial de la página
 st.set_page_config(page_title="Ejercicios Interactivos", page_icon="🧮", layout="centered")
 
 st.title("🧮 Ejercicios de Matemática Interactivos")
@@ -33,6 +32,19 @@ def generar_nuevo_ejercicio():
     st.session_state.num1 = random.randint(rango_min, rango_max)
     st.session_state.num2 = random.randint(rango_min, rango_max)
 
+# Procesar parámetros enviados automáticamente desde JavaScript
+params = st.query_params
+if "resultado" in params:
+    res = params["resultado"]
+    st.query_params.clear() # Limpiar parámetros de la URL
+    if res == "correcto":
+        st.session_state.racha += 1
+        st.session_state.total_completados += 1
+        generar_nuevo_ejercicio()
+        st.rerun()
+    elif res == "incorrecto":
+        st.session_state.racha = 0 # Reiniciar racha si falla
+
 # ---------------------------------------------------------
 # 3. Lógica del Problema y Opciones
 # ---------------------------------------------------------
@@ -57,7 +69,7 @@ col2.metric("Ejercicios resueltos", st.session_state.total_completados)
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 4. Componente Interactivo de Arrastrar (HTML/JS)
+# 4. Componente Interactivo (Mouse + Táctil con Auto-Verificación)
 # ---------------------------------------------------------
 drag_html = f"""
 <!DOCTYPE html>
@@ -70,6 +82,7 @@ drag_html = f"""
         background-color: transparent;
         margin: 0;
         padding: 10px;
+        user-select: none;
     }}
     .problema {{
         font-size: 2.2rem;
@@ -88,6 +101,7 @@ drag_html = f"""
         line-height: 60px;
         font-size: 1.8rem;
         color: #1D4ED8;
+        transition: all 0.2s ease;
     }}
     .fichas-container {{
         display: flex;
@@ -107,9 +121,19 @@ drag_html = f"""
         justify-content: center;
         align-items: center;
         box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-        user-select: none;
         touch-action: none;
         cursor: grab;
+        position: relative;
+        z-index: 100;
+    }}
+    .ficha:active {{
+        cursor: grabbing;
+    }}
+    #feedback {{
+        font-size: 1.2rem;
+        font-weight: bold;
+        height: 30px;
+        margin-top: 15px;
     }}
 </style>
 </head>
@@ -119,7 +143,7 @@ drag_html = f"""
     {n1} + {n2} = <div class="zona-soltar" id="destino">?</div>
 </div>
 
-<p style="color: #64748B;">Arrastra el número correcto hasta la casilla azul con tu dedo:</p>
+<p style="color: #64748B;">Arrastra el número correcto con el ratón o el dedo:</p>
 
 <div class="fichas-container">
     <div class="ficha" data-valor="{opciones[0]}">{opciones[0]}</div>
@@ -127,49 +151,77 @@ drag_html = f"""
     <div class="ficha" data-valor="{opciones[2]}">{opciones[2]}</div>
 </div>
 
+<div id="feedback"></div>
+
 <script>
     const destino = document.getElementById('destino');
+    const feedback = document.getElementById('feedback');
     const respuestaCorrecta = "{respuesta_correcta}";
+    let bloqueado = false;
 
     document.querySelectorAll('.ficha').forEach(ficha => {{
+        let isDragging = false;
         let startX, startY;
 
-        ficha.addEventListener('touchstart', (e) => {{
-            const touch = e.touches[0];
-            startX = touch.clientX;
-            startY = touch.clientY;
+        // Pointer Events: Funciona en Celulares (Táctil) y Laptops (Ratón/Trackpad)
+        ficha.addEventListener('pointerdown', (e) => {{
+            if (bloqueado) return;
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            ficha.setPointerCapture(e.pointerId);
         }});
 
-        ficha.addEventListener('touchmove', (e) => {{
-            e.preventDefault();
-            const touch = e.touches[0];
-            const deltaX = touch.clientX - startX;
-            const deltaY = touch.clientY - startY;
+        ficha.addEventListener('pointermove', (e) => {{
+            if (!isDragging || bloqueado) return;
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
             ficha.style.transform = `translate(${{deltaX}}px, ${{deltaY}}px)`;
         }});
 
-        ficha.addEventListener('touchend', (e) => {{
-            const touch = e.changedTouches[0];
-            const rect = destino.getBoundingClientRect();
+        ficha.addEventListener('pointerup', (e) => {{
+            if (!isDragging) return;
+            isDragging = false;
+            ficha.releasePointerCapture(e.pointerId);
 
+            const rect = destino.getBoundingClientRect();
             const dentro = (
-                touch.clientX >= rect.left &&
-                touch.clientX <= rect.right &&
-                touch.clientY >= rect.top &&
-                touch.clientY <= rect.bottom
+                e.clientX >= rect.left &&
+                e.clientX <= rect.right &&
+                e.clientY >= rect.top &&
+                e.clientY <= rect.bottom
             );
 
-            if (dentro) {{
+            if (dentro && !bloqueado) {{
                 const valor = ficha.getAttribute('data-valor');
                 destino.textContent = valor;
+
                 if (valor === respuestaCorrecta) {{
+                    bloqueado = true;
                     destino.style.backgroundColor = "#C6F6D5";
                     destino.style.borderColor = "#38A169";
+                    feedback.textContent = "¡Excelente! 🎉";
+                    feedback.style.color = "#2F855A";
+                    
+                    // Notificar a Streamlit para pasar automáticamente al siguiente
+                    setTimeout(() => {{
+                        window.top.location.href = window.top.location.pathname + "?resultado=correcto";
+                    }}, 600);
                 }} else {{
                     destino.style.backgroundColor = "#FED7D7";
                     destino.style.borderColor = "#E53E3E";
+                    feedback.textContent = "Inténtalo de nuevo ❌";
+                    feedback.style.color = "#C53030";
+                    
+                    setTimeout(() => {{
+                        destino.textContent = "?";
+                        destino.style.backgroundColor = "#EFF6FF";
+                        destino.style.borderColor = "#3B82F6";
+                        feedback.textContent = "";
+                    }}, 1000);
                 }}
             }}
+
             ficha.style.transform = "translate(0px, 0px)";
         }});
     }});
@@ -178,21 +230,11 @@ drag_html = f"""
 </html>
 """
 
-components.html(drag_html, height=280)
+components.html(drag_html, height=290)
 
 # ---------------------------------------------------------
-# 5. Botones de Control de Flujo (Consecutivos)
+# 5. Botón Secundario de Salteo Opcional
 # ---------------------------------------------------------
-col_btn1, col_btn2 = st.columns(2)
-
-with col_btn1:
-    if st.button("✅ Verificar Acierto / Siguiente", type="primary", use_container_width=True):
-        st.session_state.racha += 1
-        st.session_state.total_completados += 1
-        generar_nuevo_ejercicio()
-        st.rerun()
-
-with col_btn2:
-    if st.button("🔄 Cambiar Ejercicio", use_container_width=True):
-        generar_nuevo_ejercicio()
-        st.rerun()
+if st.button("🔄 Saltar Ejercicio", use_container_width=True):
+    generar_nuevo_ejercicio()
+    st.rerun()
