@@ -65,7 +65,7 @@ else:
     opciones = st.session_state.opciones
 
 # ---------------------------------------------------------
-# 5. Componente Interactivo (Mouse + Táctil)
+# 5. Componente Interactivo (Mouse + Táctil con tamaño ajustado)
 # ---------------------------------------------------------
 drag_html = f"""
 <!DOCTYPE html>
@@ -77,8 +77,14 @@ drag_html = f"""
         text-align: center;
         background-color: transparent;
         margin: 0;
-        padding: 5px;
+        padding: 10px;
         user-select: none;
+    }}
+    .container {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }}
     .problema {{
         font-size: 2.2rem;
@@ -101,8 +107,8 @@ drag_html = f"""
     .fichas-container {{
         display: flex;
         justify-content: center;
-        gap: 15px;
-        margin-top: 20px;
+        gap: 20px;
+        margin-top: 15px;
     }}
     .ficha {{
         width: 70px;
@@ -122,24 +128,35 @@ drag_html = f"""
         z-index: 100;
     }}
     .ficha:active {{ cursor: grabbing; }}
+    #feedback {{
+        font-size: 1.2rem;
+        font-weight: bold;
+        height: 30px;
+        margin-top: 15px;
+    }}
 </style>
 </head>
 <body>
 
-<div class="problema">
-    {n1} + {n2} = <div class="zona-soltar" id="destino">?</div>
-</div>
+<div class="container">
+    <div class="problema">
+        {n1} + {n2} = <div class="zona-soltar" id="destino">?</div>
+    </div>
 
-<p style="color: #64748B;">Arrastra el número correcto a la casilla azul:</p>
+    <p style="color: #64748B; margin: 0 0 10px 0;">Arrastra el número correcto a la casilla azul:</p>
 
-<div class="fichas-container">
-    <div class="ficha" data-valor="{opciones[0]}">{opciones[0]}</div>
-    <div class="ficha" data-valor="{opciones[1]}">{opciones[1]}</div>
-    <div class="ficha" data-valor="{opciones[2]}">{opciones[2]}</div>
+    <div class="fichas-container">
+        <div class="ficha" data-valor="{opciones[0]}">{opciones[0]}</div>
+        <div class="ficha" data-valor="{opciones[1]}">{opciones[1]}</div>
+        <div class="ficha" data-valor="{opciones[2]}">{opciones[2]}</div>
+    </div>
+
+    <div id="feedback"></div>
 </div>
 
 <script>
     const destino = document.getElementById('destino');
+    const feedback = document.getElementById('feedback');
     const respuestaCorrecta = "{respuesta_correcta}";
 
     document.querySelectorAll('.ficha').forEach(ficha => {{
@@ -179,9 +196,13 @@ drag_html = f"""
                 if (valor === respuestaCorrecta) {{
                     destino.style.backgroundColor = "#C6F6D5";
                     destino.style.borderColor = "#38A169";
+                    feedback.textContent = "¡Excelente! 🎉";
+                    feedback.style.color = "#2F855A";
                 }} else {{
                     destino.style.backgroundColor = "#FED7D7";
                     destino.style.borderColor = "#E53E3E";
+                    feedback.textContent = "Inténtalo de nuevo ❌";
+                    feedback.style.color = "#C53030";
                 }}
             }}
             ficha.style.transform = "translate(0px, 0px)";
@@ -192,27 +213,23 @@ drag_html = f"""
 </html>
 """
 
-components.html(drag_html, height=250)
+# Se incrementó la altura a 320px para asegurar la visibilidad del problema en pantalla
+components.html(drag_html, height=320)
 
 # ---------------------------------------------------------
-# 6. Selección Directa de Respuesta (Manejo Robusto de Estado)
+# 6. Control Manual para Siguiente Ejercicio
 # ---------------------------------------------------------
-st.markdown("#### Selecciona el número que arrastraste:")
-cols = st.columns(3)
+col_b1, col_b2 = st.columns(2)
 
-for idx, opc in enumerate(opciones):
-    if cols[idx].button(f"👉 {opc}", use_container_width=True, key=f"btn_{opc}"):
-        if opc == respuesta_correcta:
-            st.session_state.racha += 1
-            st.session_state.total_completados += 1
-            st.success("¡Excelente! 🎉")
-            generar_nuevo_ejercicio()
-            st.rerun()
-        else:
-            st.session_state.racha = 0
-            st.error("Inténtalo de nuevo ❌")
+with col_b1:
+    if st.button("✅ Sumar Acierto y Siguiente", type="primary", use_container_width=True):
+        st.session_state.racha += 1
+        st.session_state.total_completados += 1
+        generar_nuevo_ejercicio()
+        st.rerun()
 
-st.markdown("---")
-if st.button("🔄 Saltar Ejercicio", use_container_width=True):
-    generar_nuevo_ejercicio()
-    st.rerun()
+with col_b2:
+    if st.button("🔄 Saltar Ejercicio", use_container_width=True):
+        st.session_state.racha = 0
+        generar_nuevo_ejercicio()
+        st.rerun()
