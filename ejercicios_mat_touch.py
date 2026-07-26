@@ -5,7 +5,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # Configuración de página optimizada para móviles
-st.set_page_config(page_title="Ejercicios Interactivos", page_icon="🧮", layout="centered")
+st.set_page_config(page_title="Ejercicios de Suma y Resta", page_icon="🧮", layout="centered")
 
 # ---------------------------------------------------------
 # 1. Catálogo de Avatares
@@ -29,15 +29,14 @@ if "avatar_key" not in st.session_state:
     st.session_state.avatar_key = "🦄 Unicornio"
 
 if not st.session_state.nombre_estudiante:
-    st.title("🧮 ¡Bienvenido a Matemáticas!")
-    st.write("Por favor, ingresa tu nombre y elige a tu compañero de juego:")
+    st.title("🧮 ¡Bienvenido!")
+    st.write("Ingresa tu nombre y elige a tu compañero de juego:")
     
     nombre_input = st.text_input("Tu nombre:", placeholder="Escribe tu nombre aquí...")
     
     st.write("**Elige tu Avatar:**")
     avatar_seleccionado = st.selectbox("Compañero de juego:", list(AVATARES.keys()))
     
-    # Mostrar vista previa del avatar seleccionado
     info_av = AVATARES[avatar_seleccionado]
     st.info(f"Seleccionaste a **{info_av['nombre']}** {info_av['emoji']}")
 
@@ -50,13 +49,12 @@ if not st.session_state.nombre_estudiante:
             st.warning("Por favor ingresa un nombre válido.")
     st.stop()
 
-# Avatar activo en la sesión
 avatar_actual = AVATARES.get(st.session_state.avatar_key, AVATARES["🦄 Unicornio"])
 
 # ---------------------------------------------------------
 # 3. Configuración de Niveles y Metas
 # ---------------------------------------------------------
-st.title("🧮 Ejercicios de Matemática")
+st.title("🧮 Ejercicios de Suma y Resta")
 st.caption(f"¡Hola, **{st.session_state.nombre_estudiante}**! Jugando con {avatar_actual['emoji']}")
 
 nivel = st.sidebar.radio("Selecciona el Nivel:", ["Fácil (1-10)", "Medio (10-50)", "Difícil (50-100)"])
@@ -76,7 +74,6 @@ elif nivel == "Medio (10-50)":
 else:
     rango_min, rango_max = 50, 100
 
-# Opción en barra lateral para cambiar usuario/avatar
 if st.sidebar.button("👤 Cambiar de estudiante / Avatar"):
     st.session_state.nombre_estudiante = ""
     st.session_state.aciertos_nivel = 0
@@ -98,7 +95,6 @@ def generar_nuevo_ejercicio():
     n1 = random.randint(rango_min, rango_max)
     n2 = random.randint(rango_min, rango_max)
     
-    # Si es resta, garantizamos que N1 >= N2 para evitar resultados negativos
     if st.session_state.operacion == "-":
         if n1 < n2:
             n1, n2 = n2, n1
@@ -117,21 +113,21 @@ if st.session_state.get("nivel_previo") != nivel:
     st.session_state.aciertos_nivel = 0
 
 # ---------------------------------------------------------
-# 5. Barra de Progreso Superior
+# 5. Barra de Progreso Compacta (Con Meta Completa a la Derecha)
 # ---------------------------------------------------------
 progreso = min(st.session_state.aciertos_nivel / meta_actual, 1.0)
 
-st.write(f"**Progreso de {st.session_state.nombre_estudiante}:** {st.session_state.aciertos_nivel} de {meta_actual} resueltos")
 st.progress(progreso)
 
-col_m1, col_m2 = st.columns(2)
-col_m1.metric("Aciertos seguidos", st.session_state.racha)
-col_m2.metric("Meta del nivel", f"{meta_actual} ej.")
-
-st.markdown("---")
+# Layout de 2 columnas para el texto inferior de la barra de progreso
+col_prog_izq, col_prog_der = st.columns([1, 1])
+with col_prog_izq:
+    st.caption(f"🔥 Racha: **{st.session_state.racha}** | Resueltos: **{st.session_state.aciertos_nivel}**")
+with col_prog_der:
+    st.markdown(f"<div style='text-align: right; color: #64748B; font-size: 0.85rem;'><b>Meta:</b> {meta_actual} ejercicios</div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. Pantalla de Meta Cumplida (Personalizada)
+# 6. Pantalla de Meta Cumplida
 # ---------------------------------------------------------
 if st.session_state.aciertos_nivel >= meta_actual:
     st.balloons()
@@ -139,13 +135,13 @@ if st.session_state.aciertos_nivel >= meta_actual:
     
     col_fin1, col_fin2 = st.columns(2)
     with col_fin1:
-        if st.button("🔄 Jugar este nivel de nuevo", use_container_width=True):
+        if st.button("🔄 Jugar de nuevo", use_container_width=True):
             st.session_state.aciertos_nivel = 0
             st.session_state.racha = 0
             generar_nuevo_ejercicio()
             st.rerun()
     with col_fin2:
-        if st.button("👤 Cambiar de estudiante", use_container_width=True):
+        if st.button("👤 Cambiar alumno", use_container_width=True):
             st.session_state.nombre_estudiante = ""
             st.session_state.aciertos_nivel = 0
             st.session_state.racha = 0
@@ -166,14 +162,14 @@ def crear_componente_arrastre():
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 5px; user-select: none; }
-    .avatar-box { font-size: 2.5rem; margin-bottom: 5px; }
-    .problema { font-size: 2.1rem; font-weight: bold; margin-bottom: 12px; color: #1E293B; }
-    .zona-soltar { display: inline-block; width: 85px; height: 60px; border: 3px dashed #3B82F6; border-radius: 12px; background-color: #EFF6FF; vertical-align: middle; line-height: 60px; font-size: 1.8rem; color: #1D4ED8; }
-    .fichas-container { display: flex; justify-content: center; gap: 15px; margin-top: 12px; }
-    .ficha { width: 68px; height: 68px; background-color: #F59E0B; color: white; font-size: 1.8rem; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.15); touch-action: none; cursor: grab; position: relative; z-index: 100; }
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 2px; user-select: none; }
+    .avatar-box { font-size: 2.2rem; margin-bottom: 2px; }
+    .problema { font-size: 2rem; font-weight: bold; margin-bottom: 10px; color: #1E293B; }
+    .zona-soltar { display: inline-block; width: 80px; height: 55px; border: 3px dashed #3B82F6; border-radius: 12px; background-color: #EFF6FF; vertical-align: middle; line-height: 55px; font-size: 1.7rem; color: #1D4ED8; }
+    .fichas-container { display: flex; justify-content: center; gap: 12px; margin-top: 10px; }
+    .ficha { width: 65px; height: 65px; background-color: #F59E0B; color: white; font-size: 1.7rem; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.15); touch-action: none; cursor: grab; position: relative; z-index: 100; }
     .ficha:active { cursor: grabbing; }
-    #feedback { font-size: 1.15rem; font-weight: bold; height: 30px; margin-top: 8px; }
+    #feedback { font-size: 1.1rem; font-weight: bold; height: 25px; margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -187,7 +183,7 @@ def crear_componente_arrastre():
         if (event.data.type === "streamlit:render") {
             const args = event.data.args;
             renderApp(args.n1, args.n2, args.operacion, args.opciones, args.respuesta, args.avatarEmoji, args.txtAcierto, args.txtFallo);
-            sendMessage("streamlit:setFrameHeight", {height: 310});
+            sendMessage("streamlit:setFrameHeight", {height: 280});
         }
     });
 
@@ -197,7 +193,7 @@ def crear_componente_arrastre():
             <div class="problema">
                 ${n1} ${operacion} ${n2} = <div class="zona-soltar" id="destino">?</div>
             </div>
-            <p style="color: #64748B; margin: 0; font-size: 0.9rem;">Arrastra la respuesta correcta:</p>
+            <p style="color: #64748B; margin: 0; font-size: 0.85rem;">Arrastra la respuesta correcta:</p>
             <div class="fichas-container">
                 <div class="ficha" data-valor="${opciones[0]}">${opciones[0]}</div>
                 <div class="ficha" data-valor="${opciones[1]}">${opciones[1]}</div>
@@ -253,15 +249,15 @@ def crear_componente_arrastre():
                         destino.style.borderColor = "#38A169";
                         feedback.textContent = txtAcierto;
                         feedback.style.color = "#2F855A";
-                        avatarDisplay.style.transform = "scale(1.3)";
-                        setTimeout(() => { sendMessage("streamlit:setComponentValue", {value: "ACIERTO"}); }, 600);
+                        avatarDisplay.style.transform = "scale(1.2)";
+                        setTimeout(() => { sendMessage("streamlit:setComponentValue", {value: "ACIERTO"}); }, 500);
                     } else {
                         bloqueado = true;
                         destino.style.backgroundColor = "#FED7D7";
                         destino.style.borderColor = "#E53E3E";
                         feedback.textContent = txtFallo;
                         feedback.style.color = "#C53030";
-                        setTimeout(() => { sendMessage("streamlit:setComponentValue", {value: "FALLO"}); }, 800);
+                        setTimeout(() => { sendMessage("streamlit:setComponentValue", {value: "FALLO"}); }, 700);
                     }
                 }
                 ficha.style.transform = "translate(0px, 0px)";
@@ -327,9 +323,18 @@ elif resultado == "FALLO":
     st.session_state.intentos += 1
     st.rerun()
 
-st.markdown("---")
-
 if st.button("🔄 Saltar este Ejercicio", use_container_width=True):
     st.session_state.racha = 0
     generar_nuevo_ejercicio()
     st.rerun()
+
+# ---------------------------------------------------------
+# 10. Pie de Página (Créditos)
+# ---------------------------------------------------------
+st.markdown("<br><hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+st.markdown(
+    "<div style='text-align: center; color: #94A3B8; font-size: 0.8rem; font-weight: 500;'>"
+    "Desarrollado por Estefany Urbina"
+    "</div>", 
+    unsafe_allow_html=True
+)
