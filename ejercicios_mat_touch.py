@@ -8,6 +8,27 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Ejercicios de Suma y Resta", page_icon="🧮", layout="centered")
 
 # ---------------------------------------------------------
+# Ocultar menús externos y barras de navegación predeterminadas
+# ---------------------------------------------------------
+st.markdown("""
+    <style>
+    /* Ocultar elementos de administración y links a GitHub/Streamlit */
+    #MainMenu {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    [data-testid="collapsedControl"] {display: none !important;}
+    div[data-testid="stToolbar"] {visibility: hidden !important; height: 0px !important;}
+    div[data-testid="stHeader"] {visibility: hidden !important; height: 0px !important;}
+    
+    /* Espaciado optimizado para móvil */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
 # 1. Catálogo de Avatares
 # ---------------------------------------------------------
 AVATARES = {
@@ -52,12 +73,27 @@ if not st.session_state.nombre_estudiante:
 avatar_actual = AVATARES.get(st.session_state.avatar_key, AVATARES["🦄 Unicornio"])
 
 # ---------------------------------------------------------
-# 3. Configuración de Niveles y Metas
+# 3. Selección de Nivel Directa en Pantalla Principal
 # ---------------------------------------------------------
 st.title("🧮 Ejercicios de Suma y Resta")
-st.caption(f"¡Hola, **{st.session_state.nombre_estudiante}**! Jugando con {avatar_actual['emoji']}")
 
-nivel = st.sidebar.radio("Selecciona el Nivel:", ["Fácil (1-10)", "Medio (10-50)", "Difícil (50-100)"])
+# Encabezado compacto con botón para cambiar de alumno
+col_head1, col_head2 = st.columns([2, 1])
+with col_head1:
+    st.caption(f"¡Hola, **{st.session_state.nombre_estudiante}**! Jugando con {avatar_actual['emoji']}")
+with col_head2:
+    if st.button("👤 Cambiar", use_container_width=True):
+        st.session_state.nombre_estudiante = ""
+        st.session_state.aciertos_nivel = 0
+        st.session_state.racha = 0
+        st.rerun()
+
+# Selector de Nivel integrado en pantalla
+nivel = st.selectbox(
+    "🎯 Selecciona el Nivel de Dificultad:", 
+    ["Fácil (1-10)", "Medio (10-50)", "Difícil (50-100)"],
+    index=0
+)
 
 metas_nivel = {
     "Fácil (1-10)": 20,
@@ -73,12 +109,6 @@ elif nivel == "Medio (10-50)":
     rango_min, rango_max = 10, 50
 else:
     rango_min, rango_max = 50, 100
-
-if st.sidebar.button("👤 Cambiar de estudiante / Avatar"):
-    st.session_state.nombre_estudiante = ""
-    st.session_state.aciertos_nivel = 0
-    st.session_state.racha = 0
-    st.rerun()
 
 # ---------------------------------------------------------
 # 4. Generación Dinámica de Operación (Suma o Resta)
@@ -113,13 +143,12 @@ if st.session_state.get("nivel_previo") != nivel:
     st.session_state.aciertos_nivel = 0
 
 # ---------------------------------------------------------
-# 5. Barra de Progreso Compacta (Con Meta Completa a la Derecha)
+# 5. Barra de Progreso Compacta
 # ---------------------------------------------------------
 progreso = min(st.session_state.aciertos_nivel / meta_actual, 1.0)
 
 st.progress(progreso)
 
-# Layout de 2 columnas para el texto inferior de la barra de progreso
 col_prog_izq, col_prog_der = st.columns([1, 1])
 with col_prog_izq:
     st.caption(f"🔥 Racha: **{st.session_state.racha}** | Resueltos: **{st.session_state.aciertos_nivel}**")
