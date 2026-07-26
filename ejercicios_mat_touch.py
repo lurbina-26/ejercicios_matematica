@@ -19,7 +19,7 @@ else:
     rango_min, rango_max = 50, 100
 
 # ---------------------------------------------------------
-# 2. Inicialización del Estado de la Sesión
+# 2. Estado de Sesión y Métricas
 # ---------------------------------------------------------
 if "racha" not in st.session_state:
     st.session_state.racha = 0
@@ -37,8 +37,21 @@ def generar_nuevo_ejercicio():
     st.session_state.num2 = random.randint(rango_min, rango_max)
 
 # ---------------------------------------------------------
-# 3. Métricas de Progreso
+# 3. Procesar Respuesta enviada desde la URL/iFrame
 # ---------------------------------------------------------
+if "res" in st.query_params:
+    resultado = st.query_params["res"]
+    st.query_params.clear()  # Limpiar la URL inmediatamente
+    if resultado == "ok":
+        st.session_state.racha += 1
+        st.session_state.total_completados += 1
+        generar_nuevo_ejercicio()
+        st.rerun()
+    elif resultado == "fail":
+        st.session_state.racha = 0
+        st.rerun()
+
+# Mostrar métricas
 col1, col2 = st.columns(2)
 col1.metric("Aciertos seguidos (Racha)", st.session_state.racha)
 col2.metric("Ejercicios resueltos", st.session_state.total_completados)
@@ -65,7 +78,7 @@ else:
     opciones = st.session_state.opciones
 
 # ---------------------------------------------------------
-# 5. Componente Interactivo (Arrastrar + Comunicación Nativa)
+# 5. Componente Drag & Drop con Redirección iFrame Nativa
 # ---------------------------------------------------------
 drag_html = f"""
 <!DOCTYPE html>
@@ -147,19 +160,19 @@ drag_html = f"""
 <div id="feedback"></div>
 
 <script>
-    // Configuración para comunicar el valor directamente a Streamlit
-    function notifyStreamlit(value) {{
-        window.parent.postMessage({{
-            isStreamlitMessage: true,
-            type: "streamlit:setComponentValue",
-            value: value
-        }}, "*");
-    }}
-
     const destino = document.getElementById('destino');
     const feedback = document.getElementById('feedback');
     const respuestaCorrecta = "{respuesta_correcta}";
     let bloqueado = false;
+
+    // Función compatible para comunicar el estado a la ventana principal
+    function enviarResultado(param) {{
+        try {{
+            window.top.location.href = window.top.location.pathname + "?res=" + param;
+        }} catch(e) {{
+            window.parent.location.href = window.parent.location.pathname + "?res=" + param;
+        }}
+    }}
 
     document.querySelectorAll('.ficha').forEach(ficha => {{
         let isDragging = false;
@@ -205,7 +218,7 @@ drag_html = f"""
                     feedback.style.color = "#2F855A";
 
                     setTimeout(() => {{
-                        notifyStreamlit("ACIERTO");
+                        enviarResultado("ok");
                     }}, 600);
                 }} else {{
                     destino.style.backgroundColor = "#FED7D7";
@@ -214,11 +227,7 @@ drag_html = f"""
                     feedback.style.color = "#C53030";
 
                     setTimeout(() => {{
-                        destino.textContent = "?";
-                        destino.style.backgroundColor = "#EFF6FF";
-                        destino.style.borderColor = "#3B82F6";
-                        feedback.textContent = "";
-                        notifyStreamlit("FALLO");
+                        enviarResultado("fail");
                     }}, 900);
                 }}
             }}
@@ -231,25 +240,12 @@ drag_html = f"""
 </html>
 """
 
-# Renderizar el componente y capturar el valor
-resultado_arrastre = components.html(drag_html, height=330)
-
-# ---------------------------------------------------------
-# 6. Procesar Eventos Enviados desde el Componente
-# ---------------------------------------------------------
-if resultado_arrastre == "ACIERTO":
-    st.session_state.racha += 1
-    st.session_state.total_completados += 1
-    generar_nuevo_ejercicio()
-    st.rerun()
-elif resultado_arrastre == "FALLO":
-    st.session_state.racha = 0
-    st.rerun()
+components.html(drag_html, height=330)
 
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 7. Control Secundario
+# 6. Botón Secundario de Salteo
 # ---------------------------------------------------------
 if st.button("🔄 Saltar este Ejercicio", use_container_width=True):
     st.session_state.racha = 0
