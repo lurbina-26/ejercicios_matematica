@@ -1,6 +1,6 @@
 import random
+import time
 import streamlit as st
-import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Ejercicios Interactivos", page_icon="🧮", layout="centered")
 
@@ -37,7 +37,7 @@ def generar_nuevo_ejercicio():
     st.session_state.num2 = random.randint(rango_min, rango_max)
 
 # ---------------------------------------------------------
-# 3. Métricas
+# 3. Métricas de Progreso
 # ---------------------------------------------------------
 col1, col2 = st.columns(2)
 col1.metric("Aciertos seguidos (Racha)", st.session_state.racha)
@@ -65,171 +65,48 @@ else:
     opciones = st.session_state.opciones
 
 # ---------------------------------------------------------
-# 5. Componente Interactivo (Mouse + Táctil con tamaño ajustado)
+# 5. Visualización del Problema
 # ---------------------------------------------------------
-drag_html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-    body {{
-        font-family: Arial, sans-serif;
-        text-align: center;
-        background-color: transparent;
-        margin: 0;
-        padding: 10px;
-        user-select: none;
-    }}
-    .container {{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }}
-    .problema {{
-        font-size: 2.2rem;
-        font-weight: bold;
-        margin-bottom: 15px;
-        color: #1E293B;
-    }}
-    .zona-soltar {{
-        display: inline-block;
-        width: 90px;
-        height: 60px;
-        border: 3px dashed #3B82F6;
-        border-radius: 12px;
-        background-color: #EFF6FF;
-        vertical-align: middle;
-        line-height: 60px;
-        font-size: 1.8rem;
-        color: #1D4ED8;
-    }}
-    .fichas-container {{
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        margin-top: 15px;
-    }}
-    .ficha {{
-        width: 70px;
-        height: 70px;
-        background-color: #F59E0B;
-        color: white;
-        font-size: 1.8rem;
-        font-weight: bold;
-        border-radius: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-        touch-action: none;
-        cursor: grab;
-        position: relative;
-        z-index: 100;
-    }}
-    .ficha:active {{ cursor: grabbing; }}
-    #feedback {{
-        font-size: 1.2rem;
-        font-weight: bold;
-        height: 30px;
-        margin-top: 15px;
-    }}
-</style>
-</head>
-<body>
-
-<div class="container">
-    <div class="problema">
-        {n1} + {n2} = <div class="zona-soltar" id="destino">?</div>
+st.markdown(
+    f"""
+    <div style="text-align: center; margin-bottom: 25px;">
+        <span style="font-size: 3rem; font-weight: bold; color: #1E293B;">
+            {n1} + {n2} = 
+        </span>
+        <span style="display: inline-block; width: 100px; height: 65px; border: 3px dashed #3B82F6; border-radius: 12px; background-color: #EFF6FF; line-height: 65px; font-size: 2.5rem; color: #1D4ED8; text-align: center; vertical-align: middle;">
+            ?
+        </span>
     </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-    <p style="color: #64748B; margin: 0 0 10px 0;">Arrastra el número correcto a la casilla azul:</p>
-
-    <div class="fichas-container">
-        <div class="ficha" data-valor="{opciones[0]}">{opciones[0]}</div>
-        <div class="ficha" data-valor="{opciones[1]}">{opciones[1]}</div>
-        <div class="ficha" data-valor="{opciones[2]}">{opciones[2]}</div>
-    </div>
-
-    <div id="feedback"></div>
-</div>
-
-<script>
-    const destino = document.getElementById('destino');
-    const feedback = document.getElementById('feedback');
-    const respuestaCorrecta = "{respuesta_correcta}";
-
-    document.querySelectorAll('.ficha').forEach(ficha => {{
-        let isDragging = false;
-        let startX, startY;
-
-        ficha.addEventListener('pointerdown', (e) => {{
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            ficha.setPointerCapture(e.pointerId);
-        }});
-
-        ficha.addEventListener('pointermove', (e) => {{
-            if (!isDragging) return;
-            const deltaX = e.clientX - startX;
-            const deltaY = e.clientY - startY;
-            ficha.style.transform = `translate(${{deltaX}}px, ${{deltaY}}px)`;
-        }});
-
-        ficha.addEventListener('pointerup', (e) => {{
-            if (!isDragging) return;
-            isDragging = false;
-            ficha.releasePointerCapture(e.pointerId);
-
-            const rect = destino.getBoundingClientRect();
-            const dentro = (
-                e.clientX >= rect.left &&
-                e.clientX <= rect.right &&
-                e.clientY >= rect.top &&
-                e.clientY <= rect.bottom
-            );
-
-            if (dentro) {{
-                const valor = ficha.getAttribute('data-valor');
-                destino.textContent = valor;
-                if (valor === respuestaCorrecta) {{
-                    destino.style.backgroundColor = "#C6F6D5";
-                    destino.style.borderColor = "#38A169";
-                    feedback.textContent = "¡Excelente! 🎉";
-                    feedback.style.color = "#2F855A";
-                }} else {{
-                    destino.style.backgroundColor = "#FED7D7";
-                    destino.style.borderColor = "#E53E3E";
-                    feedback.textContent = "Inténtalo de nuevo ❌";
-                    feedback.style.color = "#C53030";
-                }}
-            }}
-            ficha.style.transform = "translate(0px, 0px)";
-        }});
-    }});
-</script>
-</body>
-</html>
-"""
-
-# Se incrementó la altura a 320px para asegurar la visibilidad del problema en pantalla
-components.html(drag_html, height=320)
+st.write("### Selecciona la respuesta correcta:")
 
 # ---------------------------------------------------------
-# 6. Control Manual para Siguiente Ejercicio
+# 6. Botones de Respuesta con Verificación Estricta
 # ---------------------------------------------------------
-col_b1, col_b2 = st.columns(2)
+cols = st.columns(3)
 
-with col_b1:
-    if st.button("✅ Sumar Acierto y Siguiente", type="primary", use_container_width=True):
-        st.session_state.racha += 1
-        st.session_state.total_completados += 1
-        generar_nuevo_ejercicio()
-        st.rerun()
+for idx, opc in enumerate(opciones):
+    if cols[idx].button(f"🎈 {opc}", use_container_width=True, key=f"btn_{opc}"):
+        if opc == respuesta_correcta:
+            st.session_state.racha += 1
+            st.session_state.total_completados += 1
+            st.success("¡Excelente! Respuesta correcta 🎉")
+            time.sleep(0.8)
+            generar_nuevo_ejercicio()
+            st.rerun()
+        else:
+            st.session_state.racha = 0  # Reiniciar racha por error
+            st.error(f"¡Incorrecto! La respuesta no es {opc}. Inténtalo de nuevo ❌")
 
-with col_b2:
-    if st.button("🔄 Saltar Ejercicio", use_container_width=True):
-        st.session_state.racha = 0
-        generar_nuevo_ejercicio()
-        st.rerun()
+st.markdown("---")
+
+# ---------------------------------------------------------
+# 7. Control Secundario
+# ---------------------------------------------------------
+if st.button("🔄 Saltar este Ejercicio", use_container_width=True):
+    st.session_state.racha = 0  # Saltar penaliza la racha acumulada
+    generar_nuevo_ejercicio()
+    st.rerun()
