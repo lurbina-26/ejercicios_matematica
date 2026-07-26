@@ -8,29 +8,56 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Ejercicios Interactivos", page_icon="🧮", layout="centered")
 
 # ---------------------------------------------------------
-# 1. Registro de Nombre del Estudiante
+# 1. Catálogo de Avatares
+# ---------------------------------------------------------
+AVATARES = {
+    "🦄 Unicornio": {"emoji": "🦄", "nombre": "Unicornio Mágico", "acierto": "¡Súper mágico! ✨", "fallo": "¡Casi! Inténtalo otra vez 💫"},
+    "🐱 Gatita": {"emoji": "🐱", "nombre": "Gatita Astuta", "acierto": "¡Miau-avilloso! 🐾", "fallo": "¡Sigue intentando! 🐾"},
+    "🦸‍♀️ Súper Niña": {"emoji": "🦸‍♀️", "nombre": "Súper Heroína", "acierto": "¡Poder matemático! ⚡", "fallo": "¡Los héroes no se rinden! 💪"},
+    "👩‍🔬 Científica": {"emoji": "👩‍🔬", "nombre": "Científica Explorer", "acierto": "¡Cálculo perfecto! 🔬", "fallo": "¡Revisemos de nuevo! 📐"},
+    "🐼 Panda": {"emoji": "🐼", "nombre": "Panda Amigable", "acierto": "¡Genial, lo lograste! 🎋", "fallo": "¡Tú puedes, dale otra vez! 🌿"},
+    "🦊 Zorro": {"emoji": "🦊", "nombre": "Zorro Listo", "acierto": "¡Qué inteligente! 🦊", "fallo": "¡Un paso más! 🐾"},
+    "🤖 Robot": {"emoji": "🤖", "nombre": "Bot Matemático", "acierto": "¡Procesado con éxito! ⚙️", "fallo": "¡Recalculando... prueba de nuevo! 🔄"}
+}
+
+# ---------------------------------------------------------
+# 2. Registro de Nombre y Selección de Avatar
 # ---------------------------------------------------------
 if "nombre_estudiante" not in st.session_state:
     st.session_state.nombre_estudiante = ""
+if "avatar_key" not in st.session_state:
+    st.session_state.avatar_key = "🦄 Unicornio"
 
 if not st.session_state.nombre_estudiante:
     st.title("🧮 ¡Bienvenido a Matemáticas!")
-    st.write("Por favor, ingresa tu nombre para comenzar a jugar:")
+    st.write("Por favor, ingresa tu nombre y elige a tu compañero de juego:")
     
     nombre_input = st.text_input("Tu nombre:", placeholder="Escribe tu nombre aquí...")
-    if st.button("🚀 Comenzar a jugar", use_container_width=True, type="primary"):
+    
+    st.write("**Elige tu Avatar:**")
+    avatar_seleccionado = st.selectbox("Compañero de juego:", list(AVATARES.keys()))
+    
+    # Mostrar vista previa del avatar seleccionado
+    info_av = AVATARES[avatar_seleccionado]
+    st.info(f"Seleccionaste a **{info_av['nombre']}** {info_av['emoji']}")
+
+    if st.button("🚀 ¡Comenzar a Jugar!", use_container_width=True, type="primary"):
         if nombre_input.strip():
             st.session_state.nombre_estudiante = nombre_input.strip()
+            st.session_state.avatar_key = avatar_seleccionado
             st.rerun()
         else:
             st.warning("Por favor ingresa un nombre válido.")
-    st.stop() # Detiene la ejecución aquí hasta que ingrese su nombre
+    st.stop()
+
+# Avatar activo en la sesión
+avatar_actual = AVATARES.get(st.session_state.avatar_key, AVATARES["🦄 Unicornio"])
 
 # ---------------------------------------------------------
-# 2. Configuración de Niveles y Metas
+# 3. Configuración de Niveles y Metas
 # ---------------------------------------------------------
 st.title("🧮 Ejercicios de Matemática")
-st.caption(f"¡Hola, **{st.session_state.nombre_estudiante}**! 👋")
+st.caption(f"¡Hola, **{st.session_state.nombre_estudiante}**! Jugando con {avatar_actual['emoji']}")
 
 nivel = st.sidebar.radio("Selecciona el Nivel:", ["Fácil (1-10)", "Medio (10-50)", "Difícil (50-100)"])
 
@@ -49,15 +76,15 @@ elif nivel == "Medio (10-50)":
 else:
     rango_min, rango_max = 50, 100
 
-# Botón en la barra lateral para cambiar de alumno si se desea
-if st.sidebar.button("👤 Cambiar de estudiante"):
+# Opción en barra lateral para cambiar usuario/avatar
+if st.sidebar.button("👤 Cambiar de estudiante / Avatar"):
     st.session_state.nombre_estudiante = ""
     st.session_state.aciertos_nivel = 0
     st.session_state.racha = 0
     st.rerun()
 
 # ---------------------------------------------------------
-# 3. Inicialización del Estado de la Sesión
+# 4. Generación Dinámica de Operación (Suma o Resta)
 # ---------------------------------------------------------
 if "racha" not in st.session_state:
     st.session_state.racha = 0
@@ -67,8 +94,17 @@ if "intentos" not in st.session_state:
     st.session_state.intentos = 0
 
 def generar_nuevo_ejercicio():
-    st.session_state.num1 = random.randint(rango_min, rango_max)
-    st.session_state.num2 = random.randint(rango_min, rango_max)
+    st.session_state.operacion = random.choice(["+", "-"])
+    n1 = random.randint(rango_min, rango_max)
+    n2 = random.randint(rango_min, rango_max)
+    
+    # Si es resta, garantizamos que N1 >= N2 para evitar resultados negativos
+    if st.session_state.operacion == "-":
+        if n1 < n2:
+            n1, n2 = n2, n1
+            
+    st.session_state.num1 = n1
+    st.session_state.num2 = n2
     st.session_state.intentos += 1
 
 if "num1" not in st.session_state or st.session_state.get("nivel_actual") != nivel:
@@ -76,13 +112,12 @@ if "num1" not in st.session_state or st.session_state.get("nivel_actual") != niv
     st.session_state.aciertos_nivel = 0
     generar_nuevo_ejercicio()
 
-# Resetear aciertos si cambia de nivel
 if st.session_state.get("nivel_previo") != nivel:
     st.session_state.nivel_previo = nivel
     st.session_state.aciertos_nivel = 0
 
 # ---------------------------------------------------------
-# 4. Barra de Progreso Superior
+# 5. Barra de Progreso Superior
 # ---------------------------------------------------------
 progreso = min(st.session_state.aciertos_nivel / meta_actual, 1.0)
 
@@ -96,11 +131,11 @@ col_m2.metric("Meta del nivel", f"{meta_actual} ej.")
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 5. Pantalla de Meta Cumplida (Personalizada)
+# 6. Pantalla de Meta Cumplida (Personalizada)
 # ---------------------------------------------------------
 if st.session_state.aciertos_nivel >= meta_actual:
     st.balloons()
-    st.success(f"🏆 ¡FMUCHAS FELICIDADES, **{st.session_state.nombre_estudiante.upper()}**! 🎉\n\nHas completado los {meta_actual} ejercicios del **Nivel {nivel}**.")
+    st.success(f"🏆 ¡MUCHAS FELICIDADES, **{st.session_state.nombre_estudiante.upper()}**! 🎉\n\nJunto a {avatar_actual['emoji']} **{avatar_actual['nombre']}** has completado los {meta_actual} ejercicios del **Nivel {nivel}**.")
     
     col_fin1, col_fin2 = st.columns(2)
     with col_fin1:
@@ -119,7 +154,7 @@ if st.session_state.aciertos_nivel >= meta_actual:
     st.stop()
 
 # ---------------------------------------------------------
-# 6. Componente Nativo Bidireccional (Arrastrar y Soltar)
+# 7. Componente Nativo Bidireccional (Arrastrar y Soltar)
 # ---------------------------------------------------------
 @st.cache_resource
 def crear_componente_arrastre():
@@ -132,12 +167,13 @@ def crear_componente_arrastre():
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
     body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 5px; user-select: none; }
-    .problema { font-size: 2.1rem; font-weight: bold; margin-bottom: 15px; color: #1E293B; }
+    .avatar-box { font-size: 2.5rem; margin-bottom: 5px; }
+    .problema { font-size: 2.1rem; font-weight: bold; margin-bottom: 12px; color: #1E293B; }
     .zona-soltar { display: inline-block; width: 85px; height: 60px; border: 3px dashed #3B82F6; border-radius: 12px; background-color: #EFF6FF; vertical-align: middle; line-height: 60px; font-size: 1.8rem; color: #1D4ED8; }
-    .fichas-container { display: flex; justify-content: center; gap: 15px; margin-top: 15px; }
-    .ficha { width: 70px; height: 70px; background-color: #F59E0B; color: white; font-size: 1.8rem; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.15); touch-action: none; cursor: grab; position: relative; z-index: 100; }
+    .fichas-container { display: flex; justify-content: center; gap: 15px; margin-top: 12px; }
+    .ficha { width: 68px; height: 68px; background-color: #F59E0B; color: white; font-size: 1.8rem; font-weight: bold; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.15); touch-action: none; cursor: grab; position: relative; z-index: 100; }
     .ficha:active { cursor: grabbing; }
-    #feedback { font-size: 1.2rem; font-weight: bold; height: 30px; margin-top: 10px; }
+    #feedback { font-size: 1.15rem; font-weight: bold; height: 30px; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -150,17 +186,18 @@ def crear_componente_arrastre():
     window.addEventListener("message", function(event) {
         if (event.data.type === "streamlit:render") {
             const args = event.data.args;
-            renderApp(args.n1, args.n2, args.opciones, args.respuesta);
-            sendMessage("streamlit:setFrameHeight", {height: 280});
+            renderApp(args.n1, args.n2, args.operacion, args.opciones, args.respuesta, args.avatarEmoji, args.txtAcierto, args.txtFallo);
+            sendMessage("streamlit:setFrameHeight", {height: 310});
         }
     });
 
-    function renderApp(n1, n2, opciones, respuestaCorrecta) {
+    function renderApp(n1, n2, operacion, opciones, respuestaCorrecta, avatarEmoji, txtAcierto, txtFallo) {
         document.getElementById("content").innerHTML = `
+            <div class="avatar-box" id="avatarDisplay">${avatarEmoji}</div>
             <div class="problema">
-                ${n1} + ${n2} = <div class="zona-soltar" id="destino">?</div>
+                ${n1} ${operacion} ${n2} = <div class="zona-soltar" id="destino">?</div>
             </div>
-            <p style="color: #64748B; margin: 0; font-size: 0.95rem;">Arrastra la respuesta correcta:</p>
+            <p style="color: #64748B; margin: 0; font-size: 0.9rem;">Arrastra la respuesta correcta:</p>
             <div class="fichas-container">
                 <div class="ficha" data-valor="${opciones[0]}">${opciones[0]}</div>
                 <div class="ficha" data-valor="${opciones[1]}">${opciones[1]}</div>
@@ -171,6 +208,7 @@ def crear_componente_arrastre():
 
         const destino = document.getElementById('destino');
         const feedback = document.getElementById('feedback');
+        const avatarDisplay = document.getElementById('avatarDisplay');
         let bloqueado = false;
 
         document.querySelectorAll('.ficha').forEach(ficha => {
@@ -213,16 +251,17 @@ def crear_componente_arrastre():
                         bloqueado = true;
                         destino.style.backgroundColor = "#C6F6D5";
                         destino.style.borderColor = "#38A169";
-                        feedback.textContent = "¡Excelente! 🎉";
+                        feedback.textContent = txtAcierto;
                         feedback.style.color = "#2F855A";
-                        setTimeout(() => { sendMessage("streamlit:setComponentValue", {value: "ACIERTO"}); }, 500);
+                        avatarDisplay.style.transform = "scale(1.3)";
+                        setTimeout(() => { sendMessage("streamlit:setComponentValue", {value: "ACIERTO"}); }, 600);
                     } else {
                         bloqueado = true;
                         destino.style.backgroundColor = "#FED7D7";
                         destino.style.borderColor = "#E53E3E";
-                        feedback.textContent = "Inténtalo de nuevo ❌";
+                        feedback.textContent = txtFallo;
                         feedback.style.color = "#C53030";
-                        setTimeout(() => { sendMessage("streamlit:setComponentValue", {value: "FALLO"}); }, 700);
+                        setTimeout(() => { sendMessage("streamlit:setComponentValue", {value: "FALLO"}); }, 800);
                     }
                 }
                 ficha.style.transform = "translate(0px, 0px)";
@@ -239,18 +278,21 @@ def crear_componente_arrastre():
 drag_drop_component = crear_componente_arrastre()
 
 # ---------------------------------------------------------
-# 7. Generación de Problema y Opciones
+# 8. Cálculo de Respuesta y Opciones
 # ---------------------------------------------------------
 n1 = st.session_state.num1
 n2 = st.session_state.num2
-respuesta_correcta = n1 + n2
+op = st.session_state.operacion
 
-if "opciones" not in st.session_state or st.session_state.get("problema_actual") != f"{n1}+{n2}":
-    st.session_state.problema_actual = f"{n1}+{n2}"
+respuesta_correcta = (n1 + n2) if op == "+" else (n1 - n2)
+
+clave_problema = f"{n1}{op}{n2}"
+if "opciones" not in st.session_state or st.session_state.get("problema_actual") != clave_problema:
+    st.session_state.problema_actual = clave_problema
     opciones = [respuesta_correcta]
     while len(opciones) < 3:
         distractor = respuesta_correcta + random.choice([-3, -2, -1, 1, 2, 3, 5, -5])
-        if distractor > 0 and distractor not in opciones:
+        if distractor >= 0 and distractor not in opciones:
             opciones.append(distractor)
     random.shuffle(opciones)
     st.session_state.opciones = opciones
@@ -258,15 +300,19 @@ else:
     opciones = st.session_state.opciones
 
 # ---------------------------------------------------------
-# 8. Ejecución y Validación Automática
+# 9. Ejecución y Auto-Validación
 # ---------------------------------------------------------
-clave_unica = f"ejercicio_{st.session_state.aciertos_nivel}_{st.session_state.intentos}"
+clave_unica = f"ej_{st.session_state.aciertos_nivel}_{st.session_state.intentos}"
 
 resultado = drag_drop_component(
     n1=n1, 
     n2=n2, 
+    operacion=op,
     opciones=opciones, 
     respuesta=respuesta_correcta, 
+    avatarEmoji=avatar_actual["emoji"],
+    txtAcierto=avatar_actual["acierto"],
+    txtFallo=avatar_actual["fallo"],
     key=clave_unica
 )
 
