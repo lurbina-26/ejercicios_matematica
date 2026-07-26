@@ -7,11 +7,31 @@ import streamlit.components.v1 as components
 # Configuración de página optimizada para móviles
 st.set_page_config(page_title="Ejercicios Interactivos", page_icon="🧮", layout="centered")
 
-st.title("🧮 Ejercicios de Matemática")
+# ---------------------------------------------------------
+# 1. Registro de Nombre del Estudiante
+# ---------------------------------------------------------
+if "nombre_estudiante" not in st.session_state:
+    st.session_state.nombre_estudiante = ""
+
+if not st.session_state.nombre_estudiante:
+    st.title("🧮 ¡Bienvenido a Matemáticas!")
+    st.write("Por favor, ingresa tu nombre para comenzar a jugar:")
+    
+    nombre_input = st.text_input("Tu nombre:", placeholder="Escribe tu nombre aquí...")
+    if st.button("🚀 Comenzar a jugar", use_container_width=True, type="primary"):
+        if nombre_input.strip():
+            st.session_state.nombre_estudiante = nombre_input.strip()
+            st.rerun()
+        else:
+            st.warning("Por favor ingresa un nombre válido.")
+    st.stop() # Detiene la ejecución aquí hasta que ingrese su nombre
 
 # ---------------------------------------------------------
-# 1. Configuración de Niveles y Metas
+# 2. Configuración de Niveles y Metas
 # ---------------------------------------------------------
+st.title("🧮 Ejercicios de Matemática")
+st.caption(f"¡Hola, **{st.session_state.nombre_estudiante}**! 👋")
+
 nivel = st.sidebar.radio("Selecciona el Nivel:", ["Fácil (1-10)", "Medio (10-50)", "Difícil (50-100)"])
 
 metas_nivel = {
@@ -29,8 +49,15 @@ elif nivel == "Medio (10-50)":
 else:
     rango_min, rango_max = 50, 100
 
+# Botón en la barra lateral para cambiar de alumno si se desea
+if st.sidebar.button("👤 Cambiar de estudiante"):
+    st.session_state.nombre_estudiante = ""
+    st.session_state.aciertos_nivel = 0
+    st.session_state.racha = 0
+    st.rerun()
+
 # ---------------------------------------------------------
-# 2. Inicialización del Estado de la Sesión
+# 3. Inicialización del Estado de la Sesión
 # ---------------------------------------------------------
 if "racha" not in st.session_state:
     st.session_state.racha = 0
@@ -55,11 +82,11 @@ if st.session_state.get("nivel_previo") != nivel:
     st.session_state.aciertos_nivel = 0
 
 # ---------------------------------------------------------
-# 3. Barra de Progreso Superior
+# 4. Barra de Progreso Superior
 # ---------------------------------------------------------
 progreso = min(st.session_state.aciertos_nivel / meta_actual, 1.0)
 
-st.write(f"**Progreso del nivel:** {st.session_state.aciertos_nivel} de {meta_actual} resueltos")
+st.write(f"**Progreso de {st.session_state.nombre_estudiante}:** {st.session_state.aciertos_nivel} de {meta_actual} resueltos")
 st.progress(progreso)
 
 col_m1, col_m2 = st.columns(2)
@@ -69,20 +96,30 @@ col_m2.metric("Meta del nivel", f"{meta_actual} ej.")
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 4. Pantalla de Meta Cumplida
+# 5. Pantalla de Meta Cumplida (Personalizada)
 # ---------------------------------------------------------
 if st.session_state.aciertos_nivel >= meta_actual:
     st.balloons()
-    st.success(f"🎉 ¡Felicidades! Has completado la meta de {meta_actual} ejercicios del Nivel {nivel}.")
-    if st.button("🔄 Volver a jugar este nivel", use_container_width=True):
-        st.session_state.aciertos_nivel = 0
-        st.session_state.racha = 0
-        generar_nuevo_ejercicio()
-        st.rerun()
+    st.success(f"🏆 ¡FMUCHAS FELICIDADES, **{st.session_state.nombre_estudiante.upper()}**! 🎉\n\nHas completado los {meta_actual} ejercicios del **Nivel {nivel}**.")
+    
+    col_fin1, col_fin2 = st.columns(2)
+    with col_fin1:
+        if st.button("🔄 Jugar este nivel de nuevo", use_container_width=True):
+            st.session_state.aciertos_nivel = 0
+            st.session_state.racha = 0
+            generar_nuevo_ejercicio()
+            st.rerun()
+    with col_fin2:
+        if st.button("👤 Cambiar de estudiante", use_container_width=True):
+            st.session_state.nombre_estudiante = ""
+            st.session_state.aciertos_nivel = 0
+            st.session_state.racha = 0
+            st.rerun()
+            
     st.stop()
 
 # ---------------------------------------------------------
-# 5. Componente Nativo Bidireccional
+# 6. Componente Nativo Bidireccional (Arrastrar y Soltar)
 # ---------------------------------------------------------
 @st.cache_resource
 def crear_componente_arrastre():
@@ -202,7 +239,7 @@ def crear_componente_arrastre():
 drag_drop_component = crear_componente_arrastre()
 
 # ---------------------------------------------------------
-# 6. Generación de Problema y Opciones
+# 7. Generación de Problema y Opciones
 # ---------------------------------------------------------
 n1 = st.session_state.num1
 n2 = st.session_state.num2
@@ -221,7 +258,7 @@ else:
     opciones = st.session_state.opciones
 
 # ---------------------------------------------------------
-# 7. Ejecución y Validación Automática
+# 8. Ejecución y Validación Automática
 # ---------------------------------------------------------
 clave_unica = f"ejercicio_{st.session_state.aciertos_nivel}_{st.session_state.intentos}"
 
